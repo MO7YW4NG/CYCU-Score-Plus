@@ -1,6 +1,4 @@
-<p align="center">
-  <h1><img src="https://i.imgur.com/h8CK8sz.png" height="52" width="52"/>中原大學 成績佳 Score+</h1>
-</p>
+<h1 style="text-align:center"><img src="https://i.imgur.com/h8CK8sz.png" height="32" width="32"/>中原大學 成績佳 Score+</h1>
 
 ## 介紹
 查詢各學期平均並視覺化，另可協助計算總平均成績。
