@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Score+</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 25px;
+            background: #2d2d2d;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+        }
+        h1, h2 {
+            color: #e0e0e0;
+        }
+        canvas {
+            margin: 10px auto;
+            display: block;;
+        }
+        .table-container {
+            margin-top: 30px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0 30px;
+            background: #2d2d2d;
+            color: #e0e0e0;
+        }
+        table th, table td {
+            padding: 10px;
+            border: 1px solid #404040;
+            text-align: center;
+        }
+        table th {
+            background-color: #383838;
+            color: #e0e0e0;
+        }
+        .chart-container {
+            display: flex;
+            position: relative;
+            flex-direction: column;
+            padding: 20px;
+            background: #383838;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            box-sizing: border-box;
+            min-height: 300px;
+        }
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 25px;
+            padding: 15px;
+            width: 100%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background: #1a1a1a;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        h3{
+            text-align: center;
+            font-size: 14px;
+            font-style: italic;
+            margin-bottom: 25px;
+            color: #888;
+        }
+        h2 {
+            width: 100%;
+            text-align: center;
+            color: #e0e0e0;
+            font-size: 18px;
+            margin: 0 0 10px 0;
+        }
+        .grade-cell:hover {
+            background-color: #404040;
+            cursor: pointer;
+        }
+        input {
+            background: #404040;
+            color: #e0e0e0;
+            border: 1px solid #505050;
+            -webkit-appearance: none;
+            -moz-appearance: textfield;
+            appearance: none;
+        }
+        /* Hide the up and down arrows for number input */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Score+</h1>
+        <h3>Powered by MO7YW4NG</h3>
+        <div class="dashboard">
+            <div class="chart-container">
+                <h2>學期平均成績趨勢</h2>
+                <canvas id="gradeChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h2>學分分布</h2>
+                <canvas id="creditChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h2>課程類型分布</h2>
+                <canvas id="typeChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <h2>成績分布</h2>
+                <canvas id="gradeDistChart"></canvas>
+            </div>
+        </div>
+        <div class="table-container">
+            {% for semester, courses in data.items() %}
+            <h2>學期: {{ semester }}</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>開課系所</th>
+                        <th>類別</th>
+                        <th>課程名稱</th>
+                        <th>必選修</th>
+                        <th>成績</th>
+                        <th>學分</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for course in courses %}
+                    <tr>
+                        <td>{{ course.department }}</td>
+                        <td>{{ course.category }}</td>
+                        <td>{{ course.course_name }}</td>
+                        <td>{{ course.compulsory_or_elective }}</td>
+                        <td class="grade-cell" onclick="makeEditable(this)" data-original="{{ course.grade }}">
+                            {{ course.grade if course.grade else '' }}
+                        </td>
+                        <td>{{ course.credits }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Add these new functions at the top of your script section
+        function makeEditable(cell) {
+            if (cell.querySelector('input')) return;
+            
+            const currentValue = cell.textContent.trim();
+            if (currentValue === 'PASS') return;
+            const input = document.createElement('input');
+            input.type = 'number';
+            input.min = '0';
+            input.max = '100';
+            input.value = currentValue !== '未輸入' ? currentValue : '';
+            input.style.width = '36px';
+            
+            input.onblur = function() {
+                saveGrade(cell, input);
+            };
+            
+            input.onkeypress = function(e) {
+                if (e.key === 'Enter') {
+                    saveGrade(cell, input);
+                }
+            };
+            
+            cell.textContent = '';
+            cell.appendChild(input);
+            input.focus();
+        }
+
+        function saveGrade(cell, input) {
+            const newValue = input.value.trim();
+            const originalValue = cell.dataset.original;
+            
+            if (newValue === '') {
+                cell.textContent = '';
+                cell.dataset.original = '';
+                updateCharts();
+            } else if (isNaN(newValue) || newValue < 0 || newValue > 100) {
+                cell.textContent = originalValue || '';
+                alert('請輸入0到100之間的有效成績');
+            } else {
+                cell.textContent = newValue;
+                cell.dataset.original = newValue;
+                updateCharts();
+            }
+        }
+
+        function updateCharts() {
+            // Recalculate all data
+            const semesterAverages = calculateSemesterAverages();
+            const creditData = calculateCreditDistribution();
+            const typeData = calculateTypeDistribution();
+            const gradeRanges = calculateGradeRanges();
+
+            // Update each chart
+            updateGradeChart(semesterAverages);
+            updateCreditChart(creditData);
+            updateTypeChart(typeData);
+            updateGradeDistChart(gradeRanges);
+        }
+
+        function updateGradeChart(semesterAverages) {
+            const chart = Chart.getChart('gradeChart');
+            if (chart) {
+                chart.data.labels = Object.keys(semesterAverages);
+                chart.data.datasets[0].data = Object.values(semesterAverages);
+                chart.update();
+            }
+        }
+
+        function updateCreditChart(creditData) {
+            const chart = Chart.getChart('creditChart');
+            if (chart) {
+                chart.data.labels = Object.keys(creditData);
+                chart.data.datasets[0].data = Object.values(creditData);
+                chart.update();
+            }
+        }
+
+        function updateTypeChart(typeData) {
+            const chart = Chart.getChart('typeChart');
+            if (chart) {
+                chart.data.labels = Object.keys(typeData);
+                chart.data.datasets[0].data = Object.values(typeData);
+                chart.update();
+            }
+        }
+
+        function updateGradeDistChart(gradeRanges) {
+            const chart = Chart.getChart('gradeDistChart');
+            if (chart) {
+                chart.data.labels = Object.keys(gradeRanges);
+                chart.data.datasets[0].data = Object.values(gradeRanges);
+                chart.update();
+            }
+        }
+
+        const rawData = {{ data | tojson }};
+
+        function calculateSemesterAverages() {
+            const semesters = {};
+            document.querySelectorAll('table').forEach(table => {
+                const semesterHeader = table.previousElementSibling.textContent.split(': ')[1];
+                const courses = Array.from(table.querySelectorAll('tbody tr')).map(row => {
+                    const gradeCell = row.querySelector('.grade-cell');
+                    const grade = parseFloat(gradeCell.textContent.trim());
+                    const credits = parseInt(row.querySelector('td:last-child').textContent.trim());
+                    return { grade, credits };
+                }).filter(course => !isNaN(course.grade) && !isNaN(course.credits));
+                
+                const totalCredits = courses.reduce((sum, course) => sum + course.credits, 0);
+                if (totalCredits === 0) {
+                    semesters[semesterHeader] = 0;
+                    return;
+                }
+                
+                const weightedSum = courses.reduce((sum, course) => sum + course.grade * (course.credits / totalCredits), 0);
+                semesters[semesterHeader] = parseFloat(weightedSum.toFixed(2));
+            });
+            return semesters;
+        }
+        // Calculate credit distribution
+        function calculateCreditDistribution() {
+            return Object.values(rawData).flat().reduce((acc, course) => {
+                const credits = parseInt(course.credits);
+                if (credits > 0) {
+                    acc[credits] = (acc[credits] || 0) + 1;
+                }
+                return acc;
+            }, {});
+        }
+
+        // Calculate course type distribution
+        function calculateTypeDistribution() {
+            return Object.values(rawData).flat().reduce((acc, course) => {
+                const type = course.compulsory_or_elective.includes('必修') ? '必修' : '選修';
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+            }, {});
+        }
+        function calculateGradeRanges() {
+            const gradeRanges = {
+                '100-95': 0,
+                '94-90': 0,
+                '89-85': 0,
+                '84-80': 0,
+                '79-75': 0,
+                '74-70': 0,
+                '<70': 0
+            };
+            Object.values(rawData).flat().forEach(course => {
+                if (!isNaN(course.grade) && course.grade !== '' && course.grade !== 'PASS') {
+                    const grade = parseInt(course.grade);
+                    if (grade >= 95) gradeRanges['100-95']++;
+                    else if (grade >= 90) gradeRanges['94-90']++;
+                    else if (grade >= 85) gradeRanges['89-85']++;
+                    else if (grade >= 80) gradeRanges['84-80']++;
+                    else if (grade >= 75) gradeRanges['79-75']++;
+                    else if (grade >= 70) gradeRanges['74-70']++;
+                    else gradeRanges['<70']++;
+                }
+            });
+            return gradeRanges;
+        }
+        let gradeChart, creditChart, typeChart, gradeDistChart;
+        // Create charts
+        // Grade Trend Chart
+        const darkThemeColors = {
+            primary: '#bb86fc',
+            secondary: '#03dac6',
+            error: '#cf6679',
+            background: '#383838',
+            surface: '#1e1e1e',
+            chart: ['#bb86fc', '#03dac6', '#cf6679', '#4CAF50', '#ff7597', '#64B5F6', '#FFD54F']
+        };
+
+        gradeChart = new Chart(document.getElementById('gradeChart'), {
+            type: 'line',
+            data: {
+                datasets: [{
+                    label: '平均成績',
+                    borderColor: darkThemeColors.primary,
+                    borderWidth: 2,
+                    pointBackgroundColor: darkThemeColors.primary,
+                    fill: false
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        min: 60,
+                        max: 100,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                }
+            }
+        });
+
+        // Credit Distribution Chart
+        creditChart = new Chart(document.getElementById('creditChart'), {
+            type: 'pie',
+            data: {
+                datasets: [{
+                    backgroundColor: darkThemeColors.chart
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '學分數分布',
+                        color: '#e0e0e0'
+                    },
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                aspectRatio: 1.5,
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
+                    }
+                }
+            }
+        });
+
+        // Course Type Chart
+        typeChart = new Chart(document.getElementById('typeChart'), {
+            type: 'pie',
+            data: {
+                datasets: [{
+                    backgroundColor: [darkThemeColors.primary, darkThemeColors.secondary]
+                }]
+            },
+            options: {
+                plugins: {
+                    title: {
+                        display: true,
+                        text: '必選修課程比例',
+                        color: '#e0e0e0'
+                    },
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                aspectRatio: 1.5,
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
+                    }
+                }
+            }
+        });
+
+        // Grade Distribution Chart
+        gradeDistChart = new Chart(document.getElementById('gradeDistChart'), {
+            type: 'bar',
+            data: {
+                datasets: [{
+                    label: '課程數量',
+                    backgroundColor: darkThemeColors.primary,
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        },
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0'
+                        }
+                    }
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
+                    }
+                }
+            }
+        });
+        updateCharts();
+    </script>
+</body>
+</html>
