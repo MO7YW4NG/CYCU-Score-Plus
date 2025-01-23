@@ -1,6 +1,5 @@
-# 中原大學 成績佳 Score +
 <p align="center">
-  <img src="https://i.imgur.com/h8CK8sz.png" />
+  <h1><img src="https://i.imgur.com/h8CK8sz.png" height="52" width="52"/>中原大學 成績佳 Score+</h1>
 </p>
 
 ## 介紹
