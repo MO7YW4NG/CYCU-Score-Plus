@@ -1,51 +1,52 @@
-# Dependencies
+# 依賴包文件夾
 /node_modules
 /.pnp
 .pnp.js
 
-# Testing
+# 測試相關文件
 /coverage
 
-# Production
+# 編譯後的產物
 /build
 /dist
 
-# Environment files
+# 環境變數檔案
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 
-# Debug logs
+# 除錯日誌
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
-# IDE specific files
+# IDE 專案設定檔
 .idea
 .vscode
 *.swp
 *.swo
 .DS_Store
 
-# Browser extensions
+# 瀏覽器擴充功能
 chrome-ext/
 
-# Other
+# 其他
 *.log
 *.tmp
 .cache
 
-# Byte-compiled / optimized / DLL files
+# Python 相關
+# Python 編譯快取
 __pycache__/
 *.py[cod]
 *$py.class
 
-# C extensions
+# C 語言擴充模組
 *.so
 
-# Distribution / packaging
+# Python 打包相關
 .Python
 build/
 develop-eggs/
